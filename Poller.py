@@ -60,9 +60,9 @@ class Poller:
 
     def get_or_create_route(self, route_info):
         try:
-            #!mwd Route 999 is some fake thing,
+            #!mwd Route 999 and 80 is some fake thing,
             #  skip it.
-            if route_info.get('RouteId') == 999:
+            if route_info.get('RouteId') in (80, 999):
                 return None
             
             return self._session.query(Route).filter(Route.rId == str(route_info["RouteId"])).one()
