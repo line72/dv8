@@ -46,12 +46,14 @@ class Plotter:
             height_ratios.append(ratio)
 
         fig, plts = matplotlib.pyplot.subplots(len(routes), 1, sharex = True, sharey = False,
-                                               gridspec_kw = {'height_ratios': height_ratios})
+                                               gridspec_kw = {'height_ratios': height_ratios},
+                                               figsize = (50, 100))
 
         for i, route in enumerate(routes):
             self.make_plot(plts[i], route)
 
-        matplotlib.pyplot.show()
+        #matplotlib.pyplot.show()
+        matplotlib.pyplot.savefig('output.png')
         
     def make_plot(self, ax, route):
         # just Plot today
