@@ -18,15 +18,55 @@ class Plotter:
         self._session = Session()
 
     def go(self):
-        # just Plot today for the Route 44
+        # make a subplot for each route
+        routes = self._session.query(Route).all()
+
+        today = datetime.datetime.now()
+
+        # find the overall max y span, we'll then set up ratios
+        #  b/c we want our plots to be different sizes
+        # This looks at each routes deviations and finds its span
+        # We then find the maximum span, and for each route, we
+        #  set a ratio based on its vs the maximum span
+        spans = []
+        for r in routes:
+            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            if len(deviations) > 0:
+                spans.append(max(deviations) - min(deviations))
+        max_span = max(spans)
+
+        # now find the height ratios
+        height_ratios = []
+        for r in routes:
+            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            if len(deviations) > 0:
+                ratio = (max(deviations) - min(deviations)) / max_span
+            else:
+                ratio = 0.1 # not sure what to do here!
+            height_ratios.append(ratio)
+
+        fig, plts = matplotlib.pyplot.subplots(len(routes), 1, sharex = True, sharey = False,
+                                               gridspec_kw = {'height_ratios': height_ratios})
+
+        for i, route in enumerate(routes):
+            self.make_plot(plts[i], route)
+
+        matplotlib.pyplot.show()
+        
+    def make_plot(self, ax, route):
+        # just Plot today
         today = datetime.datetime.now()
         # cycle through colors
         colors = itertools.cycle('bgrcmy')
         hatches = itertools.cycle('/\\|-+')
-        
-        route = self._session.query(Route).filter(Route.rId == "902").one()
-        # find all the trips
 
+        # add a title
+        title = '%s %s' % (route.rId, route.name)
+        print('title=%s' % title)
+        ax.set_title(title, loc = 'left')
+
+        
+        # find all the trips
         tripDeviations = {}
         for trip in route.trips:
             key = '%s_%s_%s' % (trip.tId, trip.runId, trip.name)
@@ -38,6 +78,10 @@ class Plotter:
                     tripDeviations[key]['x'].append(waypoint.date.timestamp())
                     tripDeviations[key]['y'].append(waypoint.deviation)
 
+        if len(tripDeviations) == 0:
+            # skip
+            return
+                    
                     
         flatten = lambda l: [item for sublist in l for item in sublist]
                     
@@ -72,8 +116,6 @@ class Plotter:
         #bar_size = (max_y - min_y) / 5.0
         bar_size = 2.0
         
-        fix, ax = matplotlib.pyplot.subplots()
-
         # order our trips based on their start time
         sorted_trips = sorted(tripDeviations.values(), key = lambda x: min(x['x']))
 
@@ -97,8 +139,6 @@ class Plotter:
                             color = tripDeviation['color'],
                             alpha = 0.3,
                             hatch = hatch)
-
-        matplotlib.pyplot.show()
 
     def find_bar_index(self, bars, trip):
         '''
