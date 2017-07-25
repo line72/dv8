@@ -33,7 +33,7 @@ class Plotter:
         spans = []
         xs = []
         for r in routes:
-            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints]# if waypoint.date.day == today.day]
             deviations = [x.deviation for x in waypoints]
             xs.extend([x.date for x in waypoints])
             
@@ -48,7 +48,7 @@ class Plotter:
         # now find the height ratios 
         height_ratios = []
         for r in routes:
-            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints]# if waypoint.date.day == today.day]
             if len(deviations) > 0:
                 ratio = (max(deviations) - min(deviations)) / max_span
             else:
@@ -86,7 +86,8 @@ class Plotter:
         for trip in route.trips:
             key = '%s_%s_%s' % (trip.tId, trip.runId, trip.name)
             for waypoint in trip.waypoints:
-                if waypoint.date.day == today.day:
+                #if waypoint.date.day == today.day:
+                if True:
                     if key not in tripDeviations:
                         tripDeviations[key] = {'x': [], 'y': [], 'color': next(colors)}
                         
