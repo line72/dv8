@@ -28,14 +28,24 @@ class Plotter:
         # This looks at each routes deviations and finds its span
         # We then find the maximum span, and for each route, we
         #  set a ratio based on its vs the maximum span
+        #
+        # Also find the min/max date (x)
         spans = []
+        xs = []
         for r in routes:
-            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
+            deviations = [x.deviation for x in waypoints]
+            xs.extend([x.date for x in waypoints])
+            
             if len(deviations) > 0:
                 spans.append(max(deviations) - min(deviations))
         max_span = max(spans)
 
-        # now find the height ratios
+        min_x = min(xs)
+        max_x = max(xs)
+        xs = None
+
+        # now find the height ratios 
         height_ratios = []
         for r in routes:
             deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if waypoint.date.day == today.day]
@@ -50,6 +60,9 @@ class Plotter:
                                                figsize = (50, 100))
 
         for i, route in enumerate(routes):
+            # draw a dark black line at 0
+            plts[i].plot([min_x, max_x], [0, 0], 'k', linewidth = 4.0, zorder=100)
+
             self.make_plot(plts[i], route)
 
         #matplotlib.pyplot.show()
@@ -77,7 +90,7 @@ class Plotter:
                     if key not in tripDeviations:
                         tripDeviations[key] = {'x': [], 'y': [], 'color': next(colors)}
                         
-                    tripDeviations[key]['x'].append(waypoint.date.timestamp())
+                    tripDeviations[key]['x'].append(waypoint.date)
                     tripDeviations[key]['y'].append(waypoint.deviation)
 
         if len(tripDeviations) == 0:
@@ -87,31 +100,11 @@ class Plotter:
                     
         flatten = lambda l: [item for sublist in l for item in sublist]
                     
-        ## Try 1
-        ## This didn't look good
-        
-        # # create a nice tuple of all the data
-        # t = flatten([[x['x'], x['y'], x['color']] for x in tripDeviations.values()])
-        # print('t=%s' % t)
-                    
-        # # plot this
-        # fig, ax = matplotlib.pyplot.subplots()
-        # ax.fill(*t, alpha=0.3)
-        # matplotlib.pyplot.show()
-        
-        ##
-        ## Try 1 - End
-        
         # find an overall min and max
         all_y = flatten([x['y'] for x in tripDeviations.values()])
         max_y = max(all_y)
         min_y = min(all_y)
 
-        all_x = flatten([x['x'] for x in tripDeviations.values()])
-        max_x = max(all_x)
-        min_x = min(all_x)
-
-        
         # place colored bars along the bottom, showing the
         #  start and end of each trip
         bars = []
@@ -121,9 +114,6 @@ class Plotter:
         # order our trips based on their start time
         sorted_trips = sorted(tripDeviations.values(), key = lambda x: min(x['x']))
 
-        # draw a black line at 0
-        ax.plot([min_x, max_x], [0, 0], 'k', linewidth = 4.0, zorder=100)
-        
         for tripDeviation in sorted_trips:
             bar_idx = self.find_bar_index(bars, tripDeviation) + 1
             hatch = next(hatches)
