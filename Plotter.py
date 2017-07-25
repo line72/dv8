@@ -84,8 +84,11 @@ class Plotter:
         # find all the trips
         tripDeviations = {}
         for trip in route.trips:
-            key = '%s_%s_%s' % (trip.tId, trip.runId, trip.name)
             for waypoint in trip.waypoints:
+                # Trips restart each day, so we'll need to include
+                #  the date as part of the key
+                key = '%s_%s_%s_%s%s%s' % (trip.tId, trip.runId, trip.name,
+                                           waypoint.date.year, waypoint.date.month, waypoint.date.day)
                 #if waypoint.date.day == today.day:
                 if True:
                     if key not in tripDeviations:
