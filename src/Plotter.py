@@ -1,4 +1,33 @@
 #!/usr/bin/env python3
+#
+
+##################################################
+# DV8 (c) Marcus Dillavou <line72@line72.net
+#  https://github.com/line72/dv8
+##################################################
+
+# MIT License
+#
+# Copyright (c) 2017 Marcus Dillavou <line72@line72.net>
+# https://github.com/line72/dv8
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import itertools
 import datetime
@@ -10,13 +39,25 @@ from Database import Base, Route, Trip, WayPoint
 
 class Plotter:
     '''Simple class to plot the data.'''
-    def __init__(self):
+    def __init__(self, start_date = None, end_date = None):
         engine = sqlalchemy.create_engine("sqlite:///poller.db")
         Base.metadata.create_all(engine)
 
         Session = sqlalchemy.orm.sessionmaker(bind = engine)
         self._session = Session()
 
+        self._start_date = None
+        self._end_date = None
+        
+        if start_date != None:
+            try: self._start_date = datetime.datetime.strptime(start_date, '%Y%m%d')
+            except ValueError:
+                raise Exception('Invalid start date: %s. Please format as YYYYMMDD (20170523)' % start_date)
+        if end_date != None:
+            try: self._end_date = datetime.datetime.strptime(end_date, '%Y%m%d')
+            except ValueError:
+                raise Exception('Invalid end date: %s. Please format as YYYYMMDD (20170523)' % end_date)
+        
     def go(self):
         # make a subplot for each route
         routes = self._session.query(Route).all()
@@ -33,7 +74,7 @@ class Plotter:
         spans = []
         xs = []
         for r in routes:
-            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints]# if waypoint.date.day == today.day]
+            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
             deviations = [x.deviation for x in waypoints]
             xs.extend([x.date for x in waypoints])
             
@@ -48,7 +89,7 @@ class Plotter:
         # now find the height ratios 
         height_ratios = []
         for r in routes:
-            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints]# if waypoint.date.day == today.day]
+            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
             if len(deviations) > 0:
                 ratio = (max(deviations) - min(deviations)) / max_span
             else:
@@ -66,7 +107,7 @@ class Plotter:
             self.make_plot(plts[i], route)
 
         #matplotlib.pyplot.show()
-        matplotlib.pyplot.savefig('output.png')
+        matplotlib.pyplot.savefig('output.pdf')
         
     def make_plot(self, ax, route):
         # just Plot today
@@ -89,8 +130,7 @@ class Plotter:
                 #  the date as part of the key
                 key = '%s_%s_%s_%s%s%s' % (trip.tId, trip.runId, trip.name,
                                            waypoint.date.year, waypoint.date.month, waypoint.date.day)
-                #if waypoint.date.day == today.day:
-                if True:
+                if self.in_date_range(waypoint.date):
                     if key not in tripDeviations:
                         tripDeviations[key] = {'x': [], 'y': [], 'color': next(colors)}
                         
@@ -167,6 +207,16 @@ class Plotter:
         
         return (len(bars) - 1)
 
+    def in_date_range(self, d):
+        if self._start_date != None and self._end_date != None:
+            return d.day >= self._start_date.day and d.day <= self._end_date.day
+        elif self._start_date != None:
+            return d.day >= self._start_date.day
+        elif self._end_date != None:
+            return d.day <= self._end_date.day
+        else:
+            return True
+    
 if __name__ == '__main__':
     plotter = Plotter()
     plotter.go()
