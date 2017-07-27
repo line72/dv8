@@ -36,7 +36,7 @@ import datetime
 import sqlalchemy
 import requests
 
-from Database import Base, Route, Trip, WayPoint
+from dv8.Database import Base, Route, Trip, WayPoint
 
 class Poller:
     '''Simple class to make an HTTP request

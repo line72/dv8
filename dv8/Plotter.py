@@ -35,7 +35,7 @@ import datetime
 import sqlalchemy
 import matplotlib.pyplot
 
-from Database import Base, Route, Trip, WayPoint
+from dv8.Database import Base, Route, Trip, WayPoint
 
 class Plotter:
     '''Simple class to plot the data.'''
