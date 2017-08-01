@@ -50,7 +50,7 @@ class Trip(Base):
     runId = Column(String)
 
     route_id = Column(ForeignKey('routes.id'))
-    waypoints = relationship("WayPoint", backref="trips", order_by="WayPoint.id")
+    waypoints = relationship("WayPoint", backref="trips", order_by="WayPoint.id", lazy="dynamic")
 
 class WayPoint(Base):
     __tablename__ = 'waypoints'

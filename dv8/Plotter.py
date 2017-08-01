@@ -31,6 +31,7 @@
 
 import itertools
 import datetime
+import sys
 
 import sqlalchemy
 import matplotlib.pyplot
@@ -84,12 +85,17 @@ class Plotter:
         spans = []
         xs = []
         for r in routes:
-            waypoints = [waypoint for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
+            waypoints = [waypoint for t in r.trips for waypoint in self.waypoints(t)]
             y_values = [self.y_value(x) for x in waypoints]
             xs.extend([x.date for x in waypoints])
             
             if len(y_values) > 0:
                 spans.append(max(y_values) - min(y_values))
+
+        if len(xs) == 0:
+            print('No data points found in this date range!')
+            sys.exit(1);
+                
         max_span = max(spans)
 
         min_x = min(xs)
@@ -99,7 +105,7 @@ class Plotter:
         # now find the height ratios 
         height_ratios = []
         for r in routes:
-            y_values = [self.y_value(waypoint) for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
+            y_values = [self.y_value(waypoint) for t in r.trips for waypoint in self.waypoints(t)]
             if len(y_values) > 0:
                 ratio = (max(y_values) - min(y_values)) / max_span
             else:
@@ -137,7 +143,7 @@ class Plotter:
         # find all the trips
         trip_y_values = {}
         for trip in route.trips:
-            for waypoint in trip.waypoints:
+            for waypoint in self.waypoints(trip):
                 # Trips restart each day, so we'll need to include
                 #  the date as part of the key
                 key = '%s_%s_%s_%s%s%s' % (trip.tId, trip.runId, trip.name,
@@ -220,7 +226,14 @@ class Plotter:
 
     def waypoints(self, trip):
         '''Return all the waypoints of a trip within our date range.'''
-        return trip.waypoings.filter(Waypoint.date >= self._start_date, WayPoint.date <= self._end_date)
+        if self._start_date != None and self._end_date != None:
+            return trip.waypoints.filter(WayPoint.date >= self._start_date, WayPoint.date <= self._end_date)
+        elif self._start_date != None:
+            return trip.waypoints.filter(WayPoint.date >= self._start_date)
+        elif self._end_date != None:
+            return trip.waypoints.filter(WayPoint.date <= self._end_date)
+        else:
+            return trip.waypoints
     
     def in_date_range(self, d):
         if self._start_date != None and self._end_date != None:
