@@ -38,7 +38,7 @@ import matplotlib.pyplot
 from dv8.Database import Base, Route, Trip, WayPoint
 
 class Plotter:
-    '''Simple class to plot the data.'''
+    '''Simple abstract base class to plot the data.'''
     def __init__(self, start_date = None, end_date = None):
         engine = sqlalchemy.create_engine("sqlite:///poller.db")
         Base.metadata.create_all(engine)
@@ -57,7 +57,17 @@ class Plotter:
             try: self._end_date = datetime.datetime.strptime(end_date, '%Y%m%d')
             except ValueError:
                 raise Exception('Invalid end date: %s. Please format as YYYYMMDD (20170523)' % end_date)
-        
+
+    ## Callbacks that the sub classes must override ##
+    def y_value(self, waypoint):
+        raise NotImplementedError
+
+    def output_name(self):
+        raise NotImplementedError
+
+
+    ## Public functions ##
+            
     def go(self):
         # make a subplot for each route
         routes = self._session.query(Route).all()
@@ -66,7 +76,7 @@ class Plotter:
 
         # find the overall max y span, we'll then set up ratios
         #  b/c we want our plots to be different sizes
-        # This looks at each routes deviations and finds its span
+        # This looks at each routes y-values and finds its span
         # We then find the maximum span, and for each route, we
         #  set a ratio based on its vs the maximum span
         #
@@ -75,11 +85,11 @@ class Plotter:
         xs = []
         for r in routes:
             waypoints = [waypoint for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
-            deviations = [x.deviation for x in waypoints]
+            y_values = [self.y_value(x) for x in waypoints]
             xs.extend([x.date for x in waypoints])
             
-            if len(deviations) > 0:
-                spans.append(max(deviations) - min(deviations))
+            if len(y_values) > 0:
+                spans.append(max(y_values) - min(y_values))
         max_span = max(spans)
 
         min_x = min(xs)
@@ -89,16 +99,16 @@ class Plotter:
         # now find the height ratios 
         height_ratios = []
         for r in routes:
-            deviations = [waypoint.deviation for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
-            if len(deviations) > 0:
-                ratio = (max(deviations) - min(deviations)) / max_span
+            y_values = [self.y_value(waypoint) for t in r.trips for waypoint in t.waypoints if self.in_date_range(waypoint.date)]
+            if len(y_values) > 0:
+                ratio = (max(y_values) - min(y_values)) / max_span
             else:
                 ratio = 0.1 # not sure what to do here!
             height_ratios.append(ratio)
 
         fig, plts = matplotlib.pyplot.subplots(len(routes), 1, sharex = True, sharey = False,
                                                gridspec_kw = {'height_ratios': height_ratios},
-                                               figsize = (50, 100))
+                                               figsize = (200, 100))
 
         for i, route in enumerate(routes):
             # draw a dark black line at 0
@@ -106,8 +116,10 @@ class Plotter:
 
             self.make_plot(plts[i], route)
 
-        #matplotlib.pyplot.show()
-        matplotlib.pyplot.savefig('output.pdf')
+        ouput = self.output_name()
+        matplotlib.pyplot.savefig(ouput)
+
+    ## Internal Functions ##
         
     def make_plot(self, ax, route):
         # just Plot today
@@ -123,7 +135,7 @@ class Plotter:
 
         
         # find all the trips
-        tripDeviations = {}
+        trip_y_values = {}
         for trip in route.trips:
             for waypoint in trip.waypoints:
                 # Trips restart each day, so we'll need to include
@@ -131,13 +143,13 @@ class Plotter:
                 key = '%s_%s_%s_%s%s%s' % (trip.tId, trip.runId, trip.name,
                                            waypoint.date.year, waypoint.date.month, waypoint.date.day)
                 if self.in_date_range(waypoint.date):
-                    if key not in tripDeviations:
-                        tripDeviations[key] = {'x': [], 'y': [], 'color': next(colors)}
+                    if key not in trip_y_values:
+                        trip_y_values[key] = {'x': [], 'y': [], 'color': next(colors)}
                         
-                    tripDeviations[key]['x'].append(waypoint.date)
-                    tripDeviations[key]['y'].append(waypoint.deviation)
+                    trip_y_values[key]['x'].append(waypoint.date)
+                    trip_y_values[key]['y'].append(self.y_value(waypoint))
 
-        if len(tripDeviations) == 0:
+        if len(trip_y_values) == 0:
             # skip
             return
                     
@@ -145,34 +157,33 @@ class Plotter:
         flatten = lambda l: [item for sublist in l for item in sublist]
                     
         # find an overall min and max
-        all_y = flatten([x['y'] for x in tripDeviations.values()])
+        all_y = flatten([x['y'] for x in trip_y_values.values()])
         max_y = max(all_y)
         min_y = min(all_y)
 
         # place colored bars along the bottom, showing the
         #  start and end of each trip
         bars = []
-        #bar_size = (max_y - min_y) / 5.0
         bar_size = 2.0
         
         # order our trips based on their start time
-        sorted_trips = sorted(tripDeviations.values(), key = lambda x: min(x['x']))
+        sorted_trips = sorted(trip_y_values.values(), key = lambda x: min(x['x']))
 
-        for tripDeviation in sorted_trips:
-            bar_idx = self.find_bar_index(bars, tripDeviation) + 1
+        for y_value in sorted_trips:
+            bar_idx = self.find_bar_index(bars, y_value) + 1
             hatch = next(hatches)
             
             # make the background fill
-            ax.fill_between(tripDeviation['x'], -(bar_idx * bar_size), -((bar_idx + 1) * bar_size),
-                            color = tripDeviation['color'],
+            ax.fill_between(y_value['x'], -(bar_idx * bar_size), -((bar_idx + 1) * bar_size),
+                            color = y_value['color'],
                             alpha = 0.3,
                             hatch = hatch)
             # make a line of the actual data
-            ax.plot(tripDeviation['x'], tripDeviation['y'], tripDeviation['color'],
+            ax.plot(y_value['x'], y_value['y'], y_value['color'],
                     linewidth = 3.0)
             # fill this line
-            ax.fill_between(tripDeviation['x'], tripDeviation['y'], 0,
-                            color = tripDeviation['color'],
+            ax.fill_between(y_value['x'], y_value['y'], 0,
+                            color = y_value['color'],
                             alpha = 0.3,
                             hatch = hatch)
 
@@ -207,6 +218,10 @@ class Plotter:
         
         return (len(bars) - 1)
 
+    def waypoints(self, trip):
+        '''Return all the waypoints of a trip within our date range.'''
+        return trip.waypoings.filter(Waypoint.date >= self._start_date, WayPoint.date <= self._end_date)
+    
     def in_date_range(self, d):
         if self._start_date != None and self._end_date != None:
             return d.day >= self._start_date.day and d.day <= self._end_date.day
@@ -216,7 +231,3 @@ class Plotter:
             return d.day <= self._end_date.day
         else:
             return True
-    
-if __name__ == '__main__':
-    plotter = Plotter()
-    plotter.go()
