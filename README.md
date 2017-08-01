@@ -28,22 +28,26 @@ that utilize this database.
  * sqlalchemy
  * python-requests
 
-## create_deviation_graph
+## create_graph
 
-This script reads from the `poller.db` and generates a pdf showing the
-deviation of the buses from the schedule (on time performance). By
-default, this will graph all the data in the database in one, very
-large pdf.
+This script reads from the `poller.db` and generates a graph as a pdf. It can graph different variables for each route.
+
+Currently, there are two graph types:
+
+ - deviation: This graph shows the deviation of the buses from the
+schedule (on time performance). By default, this will graph all the
+data in the database in one, very large pdf called `deviation.pdf`
+ - onboard: This graph shows how many riders are on the bus at any given time. By default, this will graph all the data in the database in one, very large pdf called `onboard.pdf`.
 
 You can optionally pass in a start and end day to have this only plot
 a specific range. For example, if you only want to see July 20th,
 then:
 
-`python3 create_deviation_graph 20170720 20170720`
+`python3 create_graph deviation 20170720 20170720`
 
 If you want to plot a range of multiple days, like July 19th-21st:
 
-`python3 create_deivation_graph 20170719 20170721`
+`python3 create_graph onboard 20170719 20170721`
 
 ### Requirements
  
