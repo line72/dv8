@@ -132,7 +132,8 @@ class Poller:
                                 deviation = int(vehicle_info['Deviation']),
                                 opStatus = vehicle_info['OpStatus'],
                                 onBoard = int(vehicle_info['OnBoard']),
-                                direction = vehicle_info['Direction'])
+                                direction = vehicle_info['Direction'],
+                                driver = vehicle_info['DriverName'])
 
             trip.waypoints.append(waypoint)
 

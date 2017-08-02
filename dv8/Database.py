@@ -63,5 +63,6 @@ class WayPoint(Base):
     opStatus = Column(String)
     onBoard = Column(Integer)
     direction = Column(String)
+    driver = Column(String)
 
     trip_id = Column(ForeignKey('trips.id'))
