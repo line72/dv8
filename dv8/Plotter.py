@@ -40,13 +40,14 @@ from dv8.Database import Base, Route, Trip, WayPoint
 
 class Plotter:
     '''Simple abstract base class to plot the data.'''
-    def __init__(self, start_date = None, end_date = None):
+    def __init__(self, title, start_date = None, end_date = None):
         engine = sqlalchemy.create_engine("sqlite:///poller.db")
         Base.metadata.create_all(engine)
 
         Session = sqlalchemy.orm.sessionmaker(bind = engine)
         self._session = Session()
 
+        self._title = title
         self._start_date = None
         self._end_date = None
         
@@ -116,6 +117,9 @@ class Plotter:
                                                gridspec_kw = {'height_ratios': height_ratios},
                                                figsize = (200, 100))
 
+        # set a title
+        fig.suptitle(self._title, fontsize=128)
+        
         for i, route in enumerate(routes):
             # draw a dark black line at 0
             plts[i].plot([min_x, max_x], [0, 0], 'k', linewidth = 4.0, zorder=100)

@@ -40,41 +40,40 @@
 ##################################################
 
 import sys
+import argparse
 
 import dv8.DeviationPlotter
 import dv8.OnBoardPlotter
 
 if __name__ == '__main__':
-    def usage():
-        print('Usage: %s GRAPH [start_time end_time]' % sys.argv[0])
-        print('')
-        print('  GRAPH:')
-        print('    deviation \tOn Time Performance based on time deviation')
-        print('    onboard   \tRiders actively On the bus')
-        print('')
-        print('  start_time and end_time are formatted as: YYYYMMDD (20170523)')
-        sys.exit(1)
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('graph_type',
+                        choices = ['deviation', 'onboard'],
+                        help = 'The type of graph to create')
+    parser.add_argument('-t', '--title',
+                        help = 'Set the graph title',
+                        action = 'store')
+    parser.add_argument('-s', '--start-date',
+                        help = 'The start date in YYYYMMDD format (20170523)',
+                        action = 'store')
+    parser.add_argument('-e', '--end-date',
+                        help = 'The end date in YYYYMMDD format (20170523)',
+                        action = 'store')
     
-    if '-h' in sys.argv or '--help' in sys.argv or len(sys.argv) < 2:
-        usage()
-
-    graph_type = sys.argv[1]
+    args = parser.parse_args()
     
-    start_time = None
-    end_time = None
+    graph_type = args.graph_type
+    title = '%s - %s' % (args.title, graph_type)
     
-    try: start_time = sys.argv[2]
-    except IndexError: pass
-    try: end_time = sys.argv[3]
-    except IndexError: pass
+    start_time = args.start_date
+    end_time = args.end_date
+    
 
-
-    if graph_type.strip() == 'deviation':
-        plotter = dv8.DeviationPlotter.DeviationPlotter(start_time, end_time)
+    if graph_type == 'deviation':
+        plotter = dv8.DeviationPlotter.DeviationPlotter(title, start_time, end_time)
         plotter.go()
-    elif graph_type.strip() == 'onboard':
-        plotter = dv8.OnBoardPlotter.OnBoardPlotter(start_time, end_time)
+    elif graph_type == 'onboard':
+        plotter = dv8.OnBoardPlotter.OnBoardPlotter(title, start_time, end_time)
         plotter.go()
     else:
         print('Invalid GRAPH type: %s' % graph_type);
